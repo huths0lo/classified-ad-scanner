@@ -6,15 +6,24 @@
 import requests
 from bs4 import BeautifulSoup
 from twilio.rest import Client
-from twilio import twiml
 from dotenv import load_dotenv
 from datetime import datetime
 from time import sleep
+import os
+
+load_dotenv()
+
+
+account_sid = os.getenv('account_sid')
+auth_token = os.getenv('auth_token')
+client = Client(account_sid, auth_token)
+sms_number = os.getenv('sms_number')
+to_number = os.getenv('to_number')
 
 found_ads = []
 all_items = []
 
-load_dotenv()
+
 
 search_criteria = {
     'spektrum': {
@@ -29,18 +38,19 @@ search_criteria = {
 
 
 def run_scanner():
-    found_ads = []
-    found_ads = classified_scan(found_ads)
-    print(found_ads)
-    total_items = len(found_ads)
+    global total_scans
     total_scans = 0
     new_finds = 0
+    found_ads = []
+    found_ads = classified_scan(found_ads)
+    startup = 'Ad scanner started'
+    send_text(to_number, startup)
+    print(found_ads)
+    total_items = len(found_ads)
     while True:
         total_scans += 1
         found_ads = classified_scan(found_ads)
         if len(found_ads) > total_items:
-            print('add text alert here')
-            print(found_ads)
             new_finds += (len(found_ads) - total_items)
             total_items = len(found_ads)
         current_time = datetime.now().strftime("%m-%d-%Y_%Hh%Mm%Ss")
@@ -63,9 +73,17 @@ def classified_scan(found_ads):
             for item in all_items:
                 if search_term in item:
                     if item not in found_ads:
+                        if total_scans != 0:
+                            message_body = f'A new "{item}" found'
+                            send_text(to_number, message_body)
                         found_ads.append(item)
     return found_ads
 
+
+
+def send_text(to_number, message_body):
+    message = client.messages.create(body=message_body, from_=sms_number, to=to_number)
+    print(message.sid)
 
 
 #run_scanner()
